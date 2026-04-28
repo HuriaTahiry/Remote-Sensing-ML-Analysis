@@ -1,584 +1,489 @@
-# import rasterio
-# import numpy as np
-# import matplotlib.pyplot as plt
-# import glob
-# import os
-# from rasterio.plot import show
-# from rasterio.merge import merge
-# from rasterio.mask import mask
-# import geopandas as gpd
-# import json
-#
-#
-# data_path = "/Users/huriatahiry/PycharmProjects/GIS/LT05_L2SP_015035_19900116_20200916_02_T1"
-# band_files = sorted(glob.glob(os.path.join(data_path, "*B[1-7].TIF")))
-#
-# print("Bands found:", band_files)
-#
-# # Create output directories
-# out_dir = "/Users/huriatahiry/Desktop"
-#
-# clipped_out_dir = "/Users/huriatahiry/Desktop/research/clipped_bands/"
-# os.makedirs(out_dir, exist_ok=True)
-# os.makedirs(clipped_out_dir, exist_ok=True)
-#
-#
-#
-# def clip_bands_to_aoi():
-#
-#     try:
-#         # study area boundary
-#
-#         # Have to make sure this is write
-#         aoi = gpd.read_file("../data/study_area.geojson")  # .shp the file tupe
-#         aoi = aoi.to_crs(epsg=4326)  # has to macht CRS
-#
-#         print("Clipping bands to study area...")
-#
-#         for band_path in band_files:
-#             with rasterio.open(band_path) as src:
-#                 out_image, out_transform = mask(src, aoi.geometry, crop=True)
-#                 out_meta = src.meta.copy()
-#                 out_meta.update({
-#                     "height": out_image.shape[1],
-#                     "width": out_image.shape[2],
-#                     "transform": out_transform
-#                 })
-#
-#                 # Save clipped band
-#                 out_name = os.path.join(clipped_out_dir,
-#                                         os.path.basename(band_path).replace(".TIF", "_clipped.TIF"))
-#                 with rasterio.open(out_name, "w", **out_meta) as dest:
-#                     dest.write(out_image)
-#                 print("Saved:", out_name)
-#
-#         print(" All bands clipped successfully")
-#         return True
-#
-#     except Exception as e:
-#         print(f" Error clipping bands: {e}")
-#         return False
-#
-#
-#
-# def read_band(band_path):
-#     with rasterio.open(band_path) as src:
-#         return src.read(1).astype('float32'), src.profile
-#
-#
-# def load_bands():
-#
-#     # Landsat 5 TM bands:
-#     # 1 = Blue, 2 = Green, 3 = Red, 4 = NIR, 5 = SWIR1, 7 = SWIR2
-#
-#     band1, meta = read_band(band_files[0])  # Blue
-#     band2, _ = read_band(band_files[1])  # Green
-#     band3, _ = read_band(band_files[2])  # Red
-#     band4, _ = read_band(band_files[3])  # NIR
-#     band5, _ = read_band(band_files[4])  # SWIR1
-#     band7, _ = read_band(band_files[5])  # SWIR2
-#
-#     return band1, band2, band3, band4, band5, band7, meta
-#
-#
-#
-# def calculate_indices(band3, band4, band5):
-#     # Calculate NDVI and NDBI indices
-#     # NDVI = (NIR - RED) / (NIR + RED)
-#     ndvi = (band4 - band3) / (band4 + band3)
-#
-#     # NDBI = (SWIR - NIR) / (SWIR + NIR)
-#     ndbi = (band5 - band4) / (band5 + band4)
-#
-#     return ndvi, ndbi
-#
-#
-#
-# def visualize_results(band2, band3, band4, ndvi, ndbi):
-#
-#     plt.figure(figsize=(15, 5))
-#
-#     # False color composite
-#     plt.subplot(1, 3, 1)
-#     plt.imshow(np.clip(np.dstack([band4, band3, band2]) / np.percentile(band4, 98), 0, 1))
-#     plt.title("False Color (NIR, Red, Green)")
-#     plt.axis('off')
-#
-#     # NDVI
-#     plt.subplot(1, 3, 2)
-#     plt.imshow(ndvi, cmap='Greens')
-#     plt.title("NDVI (Vegetation)")
-#     plt.colorbar(shrink=0.7)
-#
-#     # NDBI
-#     plt.subplot(1, 3, 3)
-#     plt.imshow(ndbi, cmap='OrRd')
-#     plt.title("NDBI (Built-up)")
-#     plt.colorbar(shrink=0.7)
-#
-#     plt.tight_layout()
-#     plt.show()
-#
-#
-#
-# def save_outputs(ndvi, ndbi, meta):
-#     meta.update(dtype=rasterio.float32, count=1)
-#
-#     with rasterio.open(os.path.join(out_dir, "NDVI_1999.tif"), "w", **meta) as dest:
-#         dest.write(ndvi, 1)
-#
-#     with rasterio.open(os.path.join(out_dir, "NDBI_1999.tif"), "w", **meta) as dest:
-#         dest.write(ndbi, 1)
-#
-#     print("NDVI and NDBI maps saved to:", out_dir)
-#
-#
-#
-# def main():
-#
-#     print("Starting Landsat 1999 Analysis...")
-#
-#     # Clip bands to study area
-#     clip_success = clip_bands_to_aoi()
-#
-#     # Load bands
-#     print("Loading bands...")
-#     band1, band2, band3, band4, band5, band7, meta = load_bands()
-#
-#     # calculate indices
-#     print("Calculating indices...")
-#     ndvi, ndbi = calculate_indices(band3, band4, band5)
-#
-#     # Visualize results
-#     print("Creating visualizations...")
-#     visualize_results(band2, band3, band4, ndvi, ndbi)
-#
-#     # Save outputs
-#     print("Saving outputs...")
-#     save_outputs(ndvi, ndbi, meta)
-#
-#     print(" Analysis completed successfully!")
-#
-# if __name__ == "__main__":
-#     main()
 import rasterio
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import os
-from rasterio.plot import show
 from rasterio.mask import mask
 import geopandas as gpd
-from shapely.geometry import box, mapping
-import json
-import matplotlib.colors as mcolors
+from shapely.geometry import box
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+import joblib
+import warnings
+warnings.filterwarnings('ignore')
 
-# Define Raleigh bounding box coordinates (more accurate for downtown Raleigh)
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
 RALEIGH_BBOX = {
-    "min_lon": -78.70,  # only 0.02 farther west
-    "max_lon": -78.56,  # only 0.02 farther east
-    "min_lat": 35.74,   # small south expansion
-    "max_lat": 35.86    # small north expansion
+    "min_lon": -78.70,
+    "max_lon": -78.58,
+    "min_lat": 35.73,
+    "max_lat": 35.83
 }
 
-# /Users/huriatahiry/PycharmProjects/GIS/LE07_L2SP_135047_20240119_20240213_02_T1 NO
-# /Users/huriatahiry/PycharmProjects/GIS/LT05_L2SP_015035_19900116_20200916_02_T1 always yes
-# /Users/huriatahiry/PycharmProjects/GIS/LT05_L2SP_015035_19981208_20200908_02_T1 yes
-# /Users/huriatahiry/PycharmProjects/GIS/LT05_L2SP_039038_20120426_20200820_02_T1
-# /Users/huriatahiry/PycharmProjects/GIS/LC08_L2SP_015035_20231229_20240108_02_T1
+# Paths - UPDATE THIS TO YOUR DATA PATH
 data_path = "/Users/huriatahiry/PycharmProjects/GIS/LC08_L2SP_015035_20231229_20240108_02_T1"
 band_files = sorted(glob.glob(os.path.join(data_path, "*B[1-7].TIF")))
 
-print("Bands found:", [os.path.basename(b) for b in band_files])
-
-# Create output directories
-out_dir = "/Users/huriatahiry/Desktop"
-clipped_out_dir = "/Users/huriatahiry/Desktop/research/clipped_bands/"
-raleigh_out_dir = os.path.join(out_dir, "raleigh_analysis")
+# Output directories
+out_dir = "/Users/huriatahiry/Desktop/random_forest_classification"
 os.makedirs(out_dir, exist_ok=True)
-os.makedirs(clipped_out_dir, exist_ok=True)
-os.makedirs(raleigh_out_dir, exist_ok=True)
 
+# ============================================================================
+# STEP 1: LOAD AND PREPARE DATA
+# ============================================================================
 
-def create_raleigh_geometry():
-    """Create Raleigh geometry directly"""
-    raleigh_bbox = box(
-        RALEIGH_BBOX["min_lon"],
-        RALEIGH_BBOX["min_lat"],
-        RALEIGH_BBOX["max_lon"],
-        RALEIGH_BBOX["max_lat"]
-    )
+def load_raster_bands(band_files, aoi):
+    """Load all bands and clip to AOI"""
+    bands_data = {}
+    reference_crs = None
+    
+    for band_path in band_files:
+        with rasterio.open(band_path) as src:
+            if reference_crs is None:
+                reference_crs = src.crs
+                aoi_proj = aoi.to_crs(reference_crs)
+            
+            # Clip to AOI
+            out_image, out_transform = mask(src, aoi_proj.geometry, crop=True)
+            
+            # Extract band number from filename
+            band_num = os.path.basename(band_path).split('_B')[1][0]
+            
+            # Landsat SR data: scale from 0-10000 to 0-1
+            data = out_image[0].astype('float32')
+            data = data / 10000.0
+            data = np.clip(data, 0, 1)
+            
+            bands_data[f'B{band_num}'] = data
+    
+    return bands_data, out_transform, reference_crs
 
-    # Create a GeoDataFrame
-    aoi = gpd.GeoDataFrame(
-        {'geometry': [raleigh_bbox], 'name': ['Raleigh_NC']},
-        crs='EPSG:4326'
-    )
-
-    return aoi
-
-
-def clip_bands_to_raleigh():
-    """Clip bands specifically to Raleigh, NC bounding box"""
-    try:
-        # Create Raleigh geometry
-        print("Creating Raleigh geometry...")
-        aoi = create_raleigh_geometry()
-
-        print(f"Clipping bands to Raleigh, NC area...")
-        print(f"Raleigh bounds: {aoi.total_bounds}")
-
-        # Save the boundary as a shapefile for reference
-        boundary_file = os.path.join(raleigh_out_dir, "raleigh_boundary.shp")
-        aoi.to_file(boundary_file)
-        print(f"Saved Raleigh boundary to: {boundary_file}")
-
-        for band_path in band_files:
-            with rasterio.open(band_path) as src:
-                print(f"\nProcessing: {os.path.basename(band_path)}")
-                print(f"Source CRS: {src.crs}")
-                print(f"Source bounds: {src.bounds}")
-
-                # Reproject AOI to match raster CRS if needed
-                if src.crs != aoi.crs:
-                    print(f"Reprojecting AOI from {aoi.crs} to {src.crs}")
-                    aoi = aoi.to_crs(src.crs)
-
-                # Clip the band
-                out_image, out_transform = mask(src, aoi.geometry, crop=True, all_touched=True)
-
-                # Check if we got any data
-                if out_image.shape[1] == 0 or out_image.shape[2] == 0:
-                    print(f"Warning: No data in clipped area for {os.path.basename(band_path)}")
-                    continue
-
-                out_meta = src.meta.copy()
-                out_meta.update({
-                    "height": out_image.shape[1],
-                    "width": out_image.shape[2],
-                    "transform": out_transform
-                })
-
-                # Save clipped band
-                out_name = os.path.join(
-                    clipped_out_dir,
-                    os.path.basename(band_path).replace(".TIF", "_raleigh.TIF")
-                )
-
-                with rasterio.open(out_name, "w", **out_meta) as dest:
-                    dest.write(out_image)
-                print(f"Saved: {out_name}")
-                print(f"Shape: {out_image.shape}")
-                print(f"Data range: [{out_image.min():.2f}, {out_image.max():.2f}]")
-
-        print("\nAll bands clipped to Raleigh successfully")
-        return True
-
-    except Exception as e:
-        print(f"Error clipping to Raleigh: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-
-def read_band(band_path):
-    """Read a single band from a TIFF file with proper scaling"""
-    with rasterio.open(band_path) as src:
-        data = src.read(1).astype('float32')
-        # Apply scale factor if it exists in metadata (common in Landsat SR products)
-        if 'scale_factor' in src.tags():
-            scale_factor = float(src.tags()['scale_factor'])
-            data = data * scale_factor
-
-        # Remove nodata values
-        if src.nodata is not None:
-            data = np.where(data == src.nodata, np.nan, data)
-
-        return data, src.profile
-
-
-def load_raleigh_bands():
-    """Load Raleigh-clipped bands with proper band ordering"""
-    # Get all Raleigh-clipped bands
-    raleigh_bands = sorted(glob.glob(os.path.join(clipped_out_dir, "*_raleigh.TIF")))
-
-    if not raleigh_bands:
-        print("No Raleigh-clipped bands found. Clipping first...")
-        if not clip_bands_to_raleigh():
-            raise FileNotFoundError("Failed to clip bands to Raleigh area")
-        raleigh_bands = sorted(glob.glob(os.path.join(clipped_out_dir, "*_raleigh.TIF")))
-
-    print(f"\nFound {len(raleigh_bands)} Raleigh-clipped bands")
-
-    # Sort bands properly: B1, B2, B3, B4, B5, B7
-    # Landsat bands are: 1=Blue, 2=Green, 3=Red, 4=NIR, 5=SWIR1, 7=SWIR2
-    band_dict = {}
-    for band_path in raleigh_bands:
-        band_num = os.path.basename(band_path).split('_B')[1][0]  # Extract band number
-        band_dict[int(band_num)] = band_path
-
-    # Read bands in correct order
-    bands = []
-    for band_num in [1, 2, 3, 4, 5, 7]:  # Skip thermal band (6)
-        if band_num in band_dict:
-            print(f"Loading Band {band_num}: {os.path.basename(band_dict[band_num])}")
-            band_data, meta = read_band(band_dict[band_num])
-            bands.append(band_data)
-
-    if len(bands) < 6:
-        raise ValueError(f"Expected 6 bands but found {len(bands)}")
-
-    return bands[0], bands[1], bands[2], bands[3], bands[4], bands[5], meta
-
-
-def calculate_indices(band3, band4, band5):
-    """Calculate NDVI and NDBI indices with proper handling"""
-    # Avoid division by zero and handle NaN values
+def calculate_indices(bands):
+    """Calculate NDVI, NDBI, NDWI, MNDWI indices"""
+    indices = {}
+    
+    # NDVI = (NIR - Red) / (NIR + Red)
+    nir = bands.get('B4')
+    red = bands.get('B3')
     with np.errstate(divide='ignore', invalid='ignore'):
-        # NDVI = (NIR - RED) / (NIR + RED)
-        denominator_ndvi = band4 + band3
-        ndvi = np.where(denominator_ndvi != 0, (band4 - band3) / denominator_ndvi, np.nan)
+        ndvi = (nir - red) / (nir + red + 1e-10)
+        indices['NDVI'] = np.clip(ndvi, -1, 1)
+    
+    # NDBI = (SWIR1 - NIR) / (SWIR1 + NIR)
+    swir1 = bands.get('B5')
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ndbi = (swir1 - nir) / (swir1 + nir + 1e-10)
+        indices['NDBI'] = np.clip(ndbi, -1, 1)
+    
+    # NDWI = (Green - NIR) / (Green + NIR) for water
+    green = bands.get('B2')
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ndwi = (green - nir) / (green + nir + 1e-10)
+        indices['NDWI'] = np.clip(ndwi, -1, 1)
+    
+    # MNDWI = (Green - SWIR1) / (Green + SWIR1) - better for water
+    with np.errstate(divide='ignore', invalid='ignore'):
+        mndwi = (green - swir1) / (green + swir1 + 1e-10)
+        indices['MNDWI'] = np.clip(mndwi, -1, 1)
+    
+    # Brightness (average of all bands)
+    all_bands = [bands[f'B{i}'] for i in [2, 3, 4, 5, 7] if f'B{i}' in bands]
+    indices['Brightness'] = np.mean(all_bands, axis=0)
+    
+    return indices
 
-        # NDBI = (SWIR - NIR) / (SWIR + NIR)
-        denominator_ndbi = band5 + band4
-        ndbi = np.where(denominator_ndbi != 0, (band5 - band4) / denominator_ndbi, np.nan)
+# ============================================================================
+# STEP 2: CREATE TRAINING SAMPLES (MANUAL LABELING)
+# ============================================================================
 
-    # Replace inf and NaN with 0
-    ndvi = np.nan_to_num(ndvi, nan=0, posinf=0, neginf=0)
-    ndbi = np.nan_to_num(ndbi, nan=0, posinf=0, neginf=0)
+def create_training_samples(bands, indices, num_samples_per_class=300):
+    """
+    Manually label training samples based on spectral signatures.
+    In real application, you'd use field data or digitized polygons.
+    """
+    np.random.seed(42)
+    
+    rows, cols = bands['B3'].shape
+    total_pixels = rows * cols
+    
+    # Class definitions with spectral rules
+    # These thresholds are based on typical spectral signatures
+    classes = {
+        1: {'name': 'Urban', 'color': 'red', 'rule': lambda ndbi, ndvi, brightness: (ndbi > 0.05) & (ndvi < 0.2) & (brightness > 0.15)},
+        2: {'name': 'Vegetation', 'color': 'green', 'rule': lambda ndbi, ndvi, brightness: (ndvi > 0.3) & (ndbi < 0.1)},
+        3: {'name': 'Water', 'color': 'blue', 'rule': lambda ndbi, ndvi, brightness: (indices['MNDWI'] > 0.1)},
+        4: {'name': 'Bare Soil', 'color': 'brown', 'rule': lambda ndbi, ndvi, brightness: (ndvi < 0.15) & (ndvi > -0.05) & (brightness > 0.2) & (ndbi < 0.05)},
+        5: {'name': 'Agriculture', 'color': 'yellow', 'rule': lambda ndbi, ndvi, brightness: (ndvi > 0.15) & (ndvi <= 0.3) & (brightness > 0.1)}
+    }
+    
+    X_train = []
+    y_train = []
+    
+    print("\n" + "="*60)
+    print("CREATING TRAINING SAMPLES")
+    print("="*60)
+    
+    for class_id, class_info in classes.items():
+        print(f"\nSampling {class_info['name']}...")
+        
+        # Find pixels that satisfy the rule
+        mask = class_info['rule'](
+            indices['NDBI'], 
+            indices['NDVI'], 
+            indices['Brightness']
+        )
+        
+        # Get indices of valid pixels
+        valid_indices = np.where(mask.flatten())[0]
+        
+        if len(valid_indices) < num_samples_per_class:
+            print(f"  Warning: Only {len(valid_indices)} pixels found for {class_info['name']}")
+            sample_indices = valid_indices
+        else:
+            sample_indices = np.random.choice(valid_indices, num_samples_per_class, replace=False)
+        
+        # Extract features for each sample
+        for idx in sample_indices:
+            row = idx // cols
+            col = idx % cols
+            
+            # Feature vector: spectral bands + indices
+            features = [
+                bands['B2'][row, col],  # Blue
+                bands['B3'][row, col],  # Green  
+                bands['B4'][row, col],  # Red
+                bands['B5'][row, col],  # NIR
+                indices['NDVI'][row, col],
+                indices['NDBI'][row, col],
+                indices['NDWI'][row, col],
+                indices['MNDWI'][row, col],
+                indices['Brightness'][row, col]
+            ]
+            
+            X_train.append(features)
+            y_train.append(class_id)
+        
+        print(f"  Added {len(sample_indices)} samples for {class_info['name']}")
+    
+    return np.array(X_train), np.array(y_train), classes
 
-    # Clip values to valid range
-    ndvi = np.clip(ndvi, -1, 1)
-    ndbi = np.clip(ndbi, -1, 1)
+# ============================================================================
+# STEP 3: TRAIN RANDOM FOREST CLASSIFIER
+# ============================================================================
 
-    print(f"NDVI statistics: min={ndvi.min():.3f}, max={ndvi.max():.3f}, mean={ndvi.mean():.3f}")
-    print(f"NDBI statistics: min={ndbi.min():.3f}, max={ndbi.max():.3f}, mean={ndbi.mean():.3f}")
+def train_random_forest(X_train, y_train):
+    """Train Random Forest classifier with hyperparameter tuning"""
+    
+    print("\n" + "="*60)
+    print("TRAINING RANDOM FOREST CLASSIFIER")
+    print("="*60)
+    
+    # Split into training and validation sets
+    X_train_split, X_val, y_train_split, y_val = train_test_split(
+        X_train, y_train, test_size=0.2, random_state=42, stratify=y_train
+    )
+    
+    # Initialize Random Forest with optimized parameters
+    rf = RandomForestClassifier(
+        n_estimators=100,        # Number of trees
+        max_depth=15,            # Maximum depth of each tree
+        min_samples_split=5,     # Minimum samples to split a node
+        min_samples_leaf=2,      # Minimum samples in a leaf
+        max_features='sqrt',     # Features to consider for best split
+        class_weight='balanced', # HANDLES CLASS IMBALANCE automatically!
+        random_state=42,
+        n_jobs=-1                # Use all CPU cores
+    )
+    
+    # Train the model
+    print("Training model...")
+    rf.fit(X_train_split, y_train_split)
+    
+    # Evaluate on validation set
+    y_pred = rf.predict(X_val)
+    accuracy = accuracy_score(y_val, y_pred)
+    
+    print(f"\nModel Performance:")
+    print(f"  Validation Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+    print(f"  Number of Trees: {rf.n_estimators}")
+    print(f"  Feature Importance: {rf.feature_importances_}")
+    
+    # Detailed classification report
+    print("\nClassification Report:")
+    print(classification_report(y_val, y_pred))
+    
+    return rf
 
-    return ndvi, ndbi
+# ============================================================================
+# STEP 4: APPLY MODEL TO ENTIRE STUDY AREA
+# ============================================================================
 
+def predict_full_image(bands, indices, model, rows, cols):
+    """Apply trained Random Forest model to every pixel"""
+    
+    print("\n" + "="*60)
+    print("APPLYING MODEL TO STUDY AREA")
+    print("="*60)
+    print(f"Processing {rows:,} × {cols:,} = {rows*cols:,} pixels...")
+    
+    # Prepare feature matrix for all pixels
+    num_features = 9
+    X_all = np.zeros((rows * cols, num_features))
+    
+    # Flatten all bands and indices
+    X_all[:, 0] = bands['B2'].flatten()  # Blue
+    X_all[:, 1] = bands['B3'].flatten()  # Green
+    X_all[:, 2] = bands['B4'].flatten()  # Red
+    X_all[:, 3] = bands['B5'].flatten()  # NIR
+    X_all[:, 4] = indices['NDVI'].flatten()
+    X_all[:, 5] = indices['NDBI'].flatten()
+    X_all[:, 6] = indices['NDWI'].flatten()
+    X_all[:, 7] = indices['MNDWI'].flatten()
+    X_all[:, 8] = indices['Brightness'].flatten()
+    
+    # Remove NaN values (replace with 0)
+    X_all = np.nan_to_num(X_all, nan=0)
+    
+    # Predict in batches to avoid memory issues
+    batch_size = 100000
+    predictions = np.zeros(rows * cols)
+    
+    for i in range(0, len(X_all), batch_size):
+        batch = X_all[i:i+batch_size]
+        predictions[i:i+batch_size] = model.predict(batch)
+        
+        if i % (batch_size * 5) == 0:
+            print(f"  Processed {i+len(batch):,} / {len(X_all):,} pixels...")
+    
+    # Reshape back to image shape
+    classification_map = predictions.reshape(rows, cols)
+    
+    return classification_map
 
-def create_false_color_composite(band2, band3, band4):
-    """Create a properly normalized false color composite"""
+# ============================================================================
+# STEP 5: VISUALIZE RESULTS
+# ============================================================================
 
-    # Remove extreme values (2-98 percentile stretch)
-    def stretch_band(band, percentiles=(2, 98)):
-        p_low, p_high = np.nanpercentile(band, percentiles)
-        band_stretched = np.clip(band, p_low, p_high)
-        band_stretched = (band_stretched - p_low) / (p_high - p_low)
-        return np.clip(band_stretched, 0, 1)
-
-    # Apply stretching to each band
-    red_stretched = stretch_band(band3)
-    green_stretched = stretch_band(band2)
-    nir_stretched = stretch_band(band4)
-
-    # Create RGB composite (NIR, Red, Green for false color)
-    return np.dstack([nir_stretched, red_stretched, green_stretched])
-
-
-def save_individual_images(band2, band3, band4, ndvi, ndbi, false_color):
-    """Save individual images as separate files"""
-    print("\nSaving individual image files...")
-
-    # 1. False Color Composite
-    plt.figure(figsize=(10, 8))
-    plt.imshow(false_color)
-    plt.title("False Color Composite (NIR, Red, Green) - Raleigh, NC 1999")
-    plt.axis('off')
-    plt.tight_layout()
-    false_color_path = os.path.join(raleigh_out_dir, "false_color_raleigh.png")
-    plt.savefig(false_color_path, dpi=300, bbox_inches='tight')
-    print(f"Saved False Color: {false_color_path}")
-    plt.close()
-
-    # 2. NDVI Map
-    plt.figure(figsize=(10, 8))
-    plt.imshow(ndvi, cmap='RdYlGn', vmin=-1, vmax=1)
-    plt.title("NDVI - Vegetation Index - Raleigh, NC 1999")
-    plt.colorbar(label='NDVI Value', shrink=0.8)
-    plt.axis('off')
-    plt.tight_layout()
-    ndvi_img_path = os.path.join(raleigh_out_dir, "ndvi_raleigh.png")
-    plt.savefig(ndvi_img_path, dpi=300, bbox_inches='tight')
-    print(f"Saved NDVI image: {ndvi_img_path}")
-    plt.close()
-
-    # 3. NDBI Map
-    plt.figure(figsize=(10, 8))
-    plt.imshow(ndbi, cmap='RdYlBu_r', vmin=-1, vmax=1)
-    plt.title("NDBI - Built-up Index - Raleigh, NC 1999")
-    plt.colorbar(label='NDBI Value', shrink=0.8)
-    plt.axis('off')
-    plt.tight_layout()
-    ndbi_img_path = os.path.join(raleigh_out_dir, "ndbi_raleigh.png")
-    plt.savefig(ndbi_img_path, dpi=300, bbox_inches='tight')
-    print(f"Saved NDBI image: {ndbi_img_path}")
-    plt.close()
-
-    # 4. Natural Color Composite (if we have blue band)
-    try:
-        blue_bands = sorted(glob.glob(os.path.join(clipped_out_dir, "*_B1_raleigh.TIF")))
-        if blue_bands:
-            blue_band, _ = read_band(blue_bands[0])
-
-            # Create natural color composite
-            def stretch_natural(band, percentiles=(5, 95)):
-                p_low, p_high = np.nanpercentile(band, percentiles)
-                band_stretched = np.clip(band, p_low, p_high)
-                band_stretched = (band_stretched - p_low) / (p_high - p_low)
-                return np.clip(band_stretched, 0, 1)
-
-            red_natural = stretch_natural(band3)
-            green_natural = stretch_natural(band2)
-            blue_natural = stretch_natural(blue_band)
-
-            natural_color = np.dstack([red_natural, green_natural, blue_natural])
-
-            plt.figure(figsize=(10, 8))
-            plt.imshow(natural_color)
-            plt.title("Natural Color Composite - Raleigh, NC 1999")
-            plt.axis('off')
-            plt.tight_layout()
-            natural_color_path = os.path.join(raleigh_out_dir, "natural_color_raleigh.png")
-            plt.savefig(natural_color_path, dpi=300, bbox_inches='tight')
-            print(f"Saved Natural Color: {natural_color_path}")
-            plt.close()
-    except Exception as e:
-        print(f"Could not create natural color composite: {e}")
-
-
-def visualize_results(band2, band3, band4, ndvi, ndbi, false_color):
-    """Visualize all results in a single figure"""
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-
-    # False Color Composite
+def visualize_results(classification_map, classes, bands, indices, year="2023"):
+    """Create comprehensive visualizations"""
+    
+    fig, axes = plt.subplots(2, 3, figsize=(18, 12))
+    
+    # 1. Classification Map
     ax1 = axes[0, 0]
-    ax1.imshow(false_color)
-    ax1.set_title("False Color (NIR, Red, Green) - Raleigh, NC", fontsize=12)
+    cmap_colors = ['red', 'green', 'blue', 'brown', 'yellow']
+    class_cmap = plt.matplotlib.colors.ListedColormap(cmap_colors[:len(classes)])
+    
+    im1 = ax1.imshow(classification_map, cmap=class_cmap, vmin=1, vmax=len(classes))
+    ax1.set_title(f"Random Forest Classification\n{year} - {len(classes)} Classes", fontsize=12, fontweight='bold')
     ax1.axis('off')
-
-    # NDVI Map
+    
+    # Add legend
+    legend_elements = [plt.matplotlib.patches.Patch(facecolor=c, label=classes[i+1]['name']) 
+                       for i, c in enumerate(cmap_colors[:len(classes)])]
+    ax1.legend(handles=legend_elements, loc='upper right', fontsize=9)
+    
+    # 2. NDVI (for reference)
     ax2 = axes[0, 1]
-    im2 = ax2.imshow(ndvi, cmap='RdYlGn', vmin=-1, vmax=1)
-    ax2.set_title("NDVI - Vegetation Index", fontsize=12)
+    im2 = ax2.imshow(indices['NDVI'], cmap='RdYlGn', vmin=-0.5, vmax=0.8)
+    ax2.set_title("NDVI - Vegetation Index", fontsize=12, fontweight='bold')
     ax2.axis('off')
-    plt.colorbar(im2, ax=ax2, shrink=0.8, label='NDVI Value')
-
-    # NDBI Map
-    ax3 = axes[1, 0]
-    im3 = ax3.imshow(ndbi, cmap='RdYlBu_r', vmin=-1, vmax=1)
-    ax3.set_title("NDBI - Built-up Index", fontsize=12)
+    plt.colorbar(im2, ax=ax2, shrink=0.7, label='NDVI')
+    
+    # 3. NDBI (for reference)
+    ax3 = axes[0, 2]
+    im3 = ax3.imshow(indices['NDBI'], cmap='OrRd', vmin=-0.3, vmax=0.5)
+    ax3.set_title("NDBI - Built-up Index", fontsize=12, fontweight='bold')
     ax3.axis('off')
-    plt.colorbar(im3, ax=ax3, shrink=0.8, label='NDBI Value')
-
-    # NDVI Histogram
-    ax4 = axes[1, 1]
-    ax4.hist(ndvi.flatten(), bins=50, color='green', alpha=0.7, edgecolor='black')
-    ax4.set_xlabel('NDVI Value')
-    ax4.set_ylabel('Frequency')
-    ax4.set_title('NDVI Distribution')
-    ax4.grid(True, alpha=0.3)
-
-    plt.suptitle('Landsat 5 Analysis - Raleigh, NC - 1999', fontsize=16, y=0.98)
+    plt.colorbar(im3, ax=ax3, shrink=0.7, label='NDBI')
+    
+    # 4. Class Distribution Pie Chart
+    ax4 = axes[1, 0]
+    unique, counts = np.unique(classification_map, return_counts=True)
+    total_pixels = counts.sum()
+    percentages = counts / total_pixels * 100
+    
+    ax4.pie(percentages, labels=[classes[int(u)]['name'] for u in unique], 
+            colors=cmap_colors[:len(unique)], autopct='%1.1f%%', startangle=90)
+    ax4.set_title("Land Cover Distribution", fontsize=12, fontweight='bold')
+    
+    # 5. False Color Composite
+    ax5 = axes[1, 1]
+    false_color = np.dstack([
+        bands['B4'] / np.percentile(bands['B4'], 98),  # NIR as Red
+        bands['B3'] / np.percentile(bands['B3'], 98),  # Red as Green
+        bands['B2'] / np.percentile(bands['B2'], 98)   # Green as Blue
+    ])
+    false_color = np.clip(false_color, 0, 1)
+    ax5.imshow(false_color)
+    ax5.set_title("False Color Composite (NIR, Red, Green)", fontsize=12, fontweight='bold')
+    ax5.axis('off')
+    
+    # 6. Feature Importance
+    ax6 = axes[1, 2]
+    feature_names = ['Blue', 'Green', 'Red', 'NIR', 'NDVI', 'NDBI', 'NDWI', 'MNDWI', 'Brightness']
+    importances = model.feature_importances_
+    indices_sorted = np.argsort(importances)[::-1]
+    
+    ax6.barh(range(len(feature_names)), importances[indices_sorted])
+    ax6.set_yticks(range(len(feature_names)))
+    ax6.set_yticklabels([feature_names[i] for i in indices_sorted])
+    ax6.set_xlabel('Importance')
+    ax6.set_title('Random Forest Feature Importance', fontsize=12, fontweight='bold')
+    ax6.grid(alpha=0.3)
+    
+    plt.suptitle(f"Land Cover Classification using Random Forest\nRaleigh, NC - {year}", 
+                 fontsize=16, fontweight='bold', y=1.02)
     plt.tight_layout()
+    
+    # Save figure
+    output_path = os.path.join(out_dir, f"random_forest_classification_{year}.png")
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.show()
+    
+    print(f"\nVisualization saved to: {output_path}")
+    
+    return output_path
 
+# ============================================================================
+# STEP 6: SAVE OUTPUTS
+# ============================================================================
 
-def save_outputs(ndvi, ndbi, meta):
-    """Save NDVI and NDBI as GeoTIFF files"""
-    print("\nSaving GeoTIFF files...")
+def save_geotiff(classification_map, transform, crs, output_name):
+    """Save classification map as GeoTIFF"""
+    
+    output_path = os.path.join(out_dir, output_name)
+    
+    with rasterio.open(
+        output_path, 'w',
+        driver='GTiff',
+        height=classification_map.shape[0],
+        width=classification_map.shape[1],
+        count=1,
+        dtype=classification_map.dtype,
+        crs=crs,
+        transform=transform,
+        compress='lzw'
+    ) as dst:
+        dst.write(classification_map.astype('int16'), 1)
+    
+    print(f"GeoTIFF saved to: {output_path}")
+    return output_path
 
-    # Update metadata for single band output
-    meta.update(dtype=rasterio.float32, count=1, nodata=np.nan)
+def save_class_statistics(classification_map, classes):
+    """Save area statistics for each class"""
+    
+    # Assuming 30m pixel resolution (Landsat)
+    pixel_area_ha = (30 * 30) / 10000  # Convert to hectares
+    
+    unique, counts = np.unique(classification_map, return_counts=True)
+    
+    print("\n" + "="*60)
+    print("LAND COVER STATISTICS")
+    print("="*60)
+    print(f"{'Class':<15} {'Pixels':<12} {'Area (ha)':<12} {'Percentage':<10}")
+    print("-"*60)
+    
+    stats = []
+    for u, c in zip(unique, counts):
+        area_ha = c * pixel_area_ha
+        percentage = (c / counts.sum()) * 100
+        class_name = classes[int(u)]['name']
+        print(f"{class_name:<15} {c:<12,} {area_ha:<12.2f} {percentage:<10.2f}%")
+        stats.append({'Class': class_name, 'Pixels': c, 'Area_ha': area_ha, 'Percentage': percentage})
+    
+    # Save statistics to file
+    import csv
+    stats_path = os.path.join(out_dir, "classification_statistics.csv")
+    with open(stats_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['Class', 'Pixels', 'Area_ha', 'Percentage'])
+        writer.writeheader()
+        writer.writerows(stats)
+    
+    print(f"\nStatistics saved to: {stats_path}")
+    
+    return stats
 
-    # Save NDVI as GeoTIFF
-    ndvi_path = os.path.join(raleigh_out_dir, "NDVI_Raleigh_1999.tif")
-    with rasterio.open(ndvi_path, "w", **meta) as dest:
-        dest.write(ndvi.astype(np.float32), 1)
-    print(f"Saved NDVI GeoTIFF: {ndvi_path}")
-
-    # Save NDBI as GeoTIFF
-    ndbi_path = os.path.join(raleigh_out_dir, "NDBI_Raleigh_1999.tif")
-    with rasterio.open(ndbi_path, "w", **meta) as dest:
-        dest.write(ndbi.astype(np.float32), 1)
-    print(f"Saved NDBI GeoTIFF: {ndbi_path}")
-
-    # Also save a combined visualization
-    combined_path = os.path.join(raleigh_out_dir, "combined_analysis_raleigh.png")
-
-    return raleigh_out_dir
-
+# ============================================================================
+# MAIN FUNCTION
+# ============================================================================
 
 def main():
-    """Main function to run Raleigh analysis"""
-    print("=" * 60)
-    print("LANDSAT 5 ANALYSIS - RALEIGH, NC - 1999")
-    print("=" * 60)
-
-    # Step 1: Clip bands to Raleigh area
-    print("\n1. CLIPPING TO RALEIGH BOUNDARY")
-    print("-" * 40)
-    clip_success = clip_bands_to_raleigh()
-
-    if not clip_success:
-        print("Failed to clip bands. Exiting.")
-        return
-
-    # Step 2: Load Raleigh-clipped bands
-    print("\n2. LOADING RALEIGH-CLIPPED BANDS")
-    print("-" * 40)
-    try:
-        band1, band2, band3, band4, band5, band7, meta = load_raleigh_bands()
-        print(f"\nLoaded bands successfully!")
-        print(f"Image dimensions: {band3.shape}")
-        print(f"Pixel values range:")
-        print(f"  Red band (B3): [{band3.min():.2f}, {band3.max():.2f}]")
-        print(f"  NIR band (B4): [{band4.min():.2f}, {band4.max():.2f}]")
-    except Exception as e:
-        print(f"Error loading bands: {e}")
-        import traceback
-        traceback.print_exc()
-        return
-
-    # Step 3: Calculate indices
-    print("\n3. CALCULATING INDICES")
-    print("-" * 40)
-    ndvi, ndbi = calculate_indices(band3, band4, band5)
-
-    # Step 4: Create false color composite
-    print("\n4. CREATING FALSE COLOR COMPOSITE")
-    print("-" * 40)
-    false_color = create_false_color_composite(band2, band3, band4)
-
-    # Step 5: Save individual images
-    print("\n5. SAVING INDIVIDUAL IMAGE FILES")
-    print("-" * 40)
-    save_individual_images(band2, band3, band4, ndvi, ndbi, false_color)
-
-    # Step 6: Save GeoTIFF outputs
-    print("\n6. SAVING GEOTIFF OUTPUTS")
-    print("-" * 40)
-    output_dir = save_outputs(ndvi, ndbi, meta)
-
-    # Step 7: Visualize
-    print("\n7. CREATING VISUALIZATION")
-    print("-" * 40)
-    visualize_results(band2, band3, band4, ndvi, ndbi, false_color)
-
-    print("\n" + "=" * 60)
-    print("ANALYSIS COMPLETED SUCCESSFULLY!")
-    print("=" * 60)
-    print(f"\nAll outputs saved to: {output_dir}")
-    print("\nFiles created:")
-    print("1. raleigh_boundary.shp - Raleigh boundary shapefile")
-    print("2. false_color_raleigh.png - False color composite")
-    print("3. ndvi_raleigh.png - NDVI visualization")
-    print("4. ndbi_raleigh.png - NDBI visualization")
-    print("5. NDVI_Raleigh_1999.tif - NDVI GeoTIFF")
-    print("6. NDBI_Raleigh_1999.tif - NDBI GeoTIFF")
-    print("7. natural_color_raleigh.png - Natural color image (if available)")
-    print("\nYou can find these files on your Desktop in the 'raleigh_analysis' folder.")
-
+    """Main workflow for Random Forest land cover classification"""
+    
+    print("="*70)
+    print("RANDOM FOREST LAND COVER CLASSIFICATION")
+    print("Raleigh, North Carolina")
+    print("="*70)
+    
+    year = "2023"  # Extract from filename if needed
+    
+    # Create AOI
+    print("\n1. Creating study area boundary...")
+    aoi = gpd.GeoDataFrame(
+        {'geometry': [box(RALEIGH_BBOX["min_lon"], RALEIGH_BBOX["min_lat"],
+                         RALEIGH_BBOX["max_lon"], RALEIGH_BBOX["max_lat"])]},
+        crs='EPSG:4326'
+    )
+    
+    # Load raster bands
+    print("\n2. Loading Landsat bands...")
+    bands, transform, crs = load_raster_bands(band_files, aoi)
+    print(f"   Bands loaded: {list(bands.keys())}")
+    print(f"   Image shape: {bands['B3'].shape}")
+    
+    # Calculate spectral indices
+    print("\n3. Calculating spectral indices...")
+    indices = calculate_indices(bands)
+    print(f"   Indices calculated: {list(indices.keys())}")
+    
+    # Create training samples
+    rows, cols = bands['B3'].shape
+    X_train, y_train, classes = create_training_samples(bands, indices, num_samples_per_class=300)
+    print(f"\n   Total training samples: {len(X_train)}")
+    print(f"   Feature dimensions: {X_train.shape[1]}")
+    
+    # Train Random Forest
+    global model  # Make model accessible for visualization
+    model = train_random_forest(X_train, y_train)
+    
+    # Apply model to full image
+    classification_map = predict_full_image(bands, indices, model, rows, cols)
+    
+    # Visualize results
+    print("\n4. Creating visualizations...")
+    visualize_results(classification_map, classes, bands, indices, year)
+    
+    # Save outputs
+    print("\n5. Saving outputs...")
+    save_geotiff(classification_map, transform, crs, f"landcover_classification_{year}.tif")
+    save_class_statistics(classification_map, classes)
+    
+    # Save model for future use
+    model_path = os.path.join(out_dir, "random_forest_model.pkl")
+    joblib.dump(model, model_path)
+    print(f"Model saved to: {model_path}")
+    
+    print("\n" + "="*70)
+    print("CLASSIFICATION COMPLETE!")
+    print("="*70)
+    print(f"\nAll outputs saved to: {out_dir}")
+    print("\nOutput files:")
+    print("  1. random_forest_classification_2023.png - Visualization")
+    print("  2. landcover_classification_2023.tif - GeoTIFF map")
+    print("  3. classification_statistics.csv - Area statistics")
+    print("  4. random_forest_model.pkl - Trained model")
+    
+    # Class distribution summary
+    print("\n" + "="*70)
+    print("CLASSIFICATION SCHEME")
+    print("="*70)
+    for class_id, info in classes.items():
+        print(f"  Class {class_id}: {info['name']} ({info['color']})")
 
 if __name__ == "__main__":
     main()
